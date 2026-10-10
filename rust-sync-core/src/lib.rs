@@ -12,7 +12,10 @@ pub use audio_clock::{AudioClockError, AudioSampleClock};
 pub use av_sync::{AvSyncMonitor, AvSyncSnapshot, MonotonicPts};
 pub use bounded_queue::{BoundedQueue, OverflowPolicy, PushResult, QueueCapacityError};
 pub use media_packet::{MediaKind, MediaPacket, MediaPacketError};
-pub use media_scheduler::{MediaScheduler, MediaSchedulerSnapshot, SchedulerCapacityError, SchedulerPushResult, TrackQueueStats};
+pub use media_scheduler::{
+    MediaScheduler, MediaSchedulerSnapshot, SchedulerCapacityError, SchedulerPushResult,
+    TrackQueueStats,
+};
 pub use scheduler::{PacketOrder, PacketOrderSnapshot, PacketOrderTracker, TrackOrderStats};
 pub use shared_queue::{SharedBoundedQueue, SharedQueueStats};
 
