@@ -18,6 +18,8 @@ repository is being developed independently of the Android application.
   producer/consumer threads, with consistent capacity/length/drop snapshots.
 - `rust-sync-core/src/media_packet.rs` — typed audio/video packets with validated
   session-relative PTS, optional positive duration, sequence number, and payload.
+- `rust-sync-core/src/scheduler.rs` — per-track packet PTS ordering diagnostics,
+  repeated/backwards timestamp counters, and audio/video high-water-mark skew.
 - `android-integration/` — Kotlin JNI bridge and output-lifecycle adapter,
   with JVM tests. This is a reference integration, not a complete Android app.
 - `.github/workflows/rust-ci.yml` — formatting, Rust unit tests, and checks.
@@ -43,8 +45,10 @@ separate back-pressure or discontinuity policy. The base primitive is not intern
 for simple concurrent hand-off. The shared wrapper uses a mutex and is not a
 blocking channel: consumers must provide their own wake-up/polling strategy.
 `MediaPacket` standardizes packet metadata in microseconds; it does not perform
-capture, encoding, scheduling, or muxing. Keep audio and video PTS in the same
-session-relative timebase before comparing them.
+capture, encoding, scheduling, or muxing. `PacketOrderTracker` classifies PTS
+progression independently per track and exposes a high-water-mark skew. It does
+not reorder or discard packets; the pipeline owner must choose that policy. Keep
+audio and video PTS in the same session-relative timebase before comparing them.
 
 ### Audio sample clock
 
