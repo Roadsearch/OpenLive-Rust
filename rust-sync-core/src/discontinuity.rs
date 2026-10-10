@@ -76,10 +76,7 @@ impl TimestampDiscontinuityDetector {
     ///
     /// Even an out-of-order timestamp becomes the next comparison baseline.
     /// Use a separate order tracker if a high-water mark is also needed.
-    pub fn observe_pts(
-        &mut self,
-        pts_us: i64,
-    ) -> Result<TimestampEvent, NegativeTimestampError> {
+    pub fn observe_pts(&mut self, pts_us: i64) -> Result<TimestampEvent, NegativeTimestampError> {
         if pts_us < 0 {
             return Err(NegativeTimestampError);
         }
@@ -170,7 +167,9 @@ mod tests {
         );
         assert_eq!(
             detector.observe_pts(150_000),
-            Ok(TimestampEvent::BackwardJump { backward_us: 100_000 })
+            Ok(TimestampEvent::BackwardJump {
+                backward_us: 100_000
+            })
         );
         let stats = detector.stats();
         assert_eq!(stats.forward_gaps, 1);
@@ -183,7 +182,9 @@ mod tests {
         detector.observe_pts(20_000).unwrap();
         assert_eq!(
             detector.observe_pts(10_000),
-            Ok(TimestampEvent::OutOfOrder { backward_us: 10_000 })
+            Ok(TimestampEvent::OutOfOrder {
+                backward_us: 10_000
+            })
         );
         assert_eq!(detector.last_pts_us(), Some(10_000));
     }
