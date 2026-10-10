@@ -51,9 +51,11 @@ capture, encoding, scheduling, or muxing. `PacketOrderTracker` classifies PTS
 progression independently per track and exposes a high-water-mark skew. It does
 not reorder or discard packets; the pipeline owner must choose that policy.
 `MediaScheduler` is a separate bounded queue primitive: it sorts buffered packets
-by PTS and emits the earliest queued packet across tracks. Its overflow policy is
-per track, and it is not a real-time playback loop; the caller must still manage
-clock deadlines, decoder readiness, audio-device back-pressure, and discontinuities.
+by PTS and emits the earliest queued packet across tracks. `peek_next_pts_us()` lets
+the consumer inspect the next deadline candidate without consuming a packet, and
+`is_full(kind)` exposes per-track capacity pressure. Its overflow policy is per
+track, and it is not a real-time playback loop; the caller must still manage clock
+deadlines, decoder readiness, audio-device back-pressure, and discontinuities.
 Keep audio and video PTS in the same session-relative timebase before comparing them.
 
 ### Audio sample clock
