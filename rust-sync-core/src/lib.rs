@@ -1,36 +1,73 @@
-//! Small monotonic clock primitives for coordinating live output and recording.
-//! The clock deliberately has no reset-on-output-start API: starting or stopping
-//! one sink must not change timestamps observed by another sink.
+//! Shared session clock primitives for coordinating live output and recording.
+//! Starting a second output is idempotent: it never resets the active session.
 
 use std::ffi::c_void;
-use std::sync::OnceLock;
+use std::sync::{Mutex, OnceLock};
 use std::time::Instant;
 
-static EPOCH: OnceLock<Instant> = OnceLock::new();
+static SESSION_START: OnceLock<Mutex<Option<Instant>>> = OnceLock::new();
 
-/// Nanoseconds elapsed since this process first initialized the shared epoch.
-pub fn monotonic_now_ns() -> u64 {
-    let epoch = EPOCH.get_or_init(Instant::now);
-    epoch.elapsed().as_nanos().min(u64::MAX as u128) as u64
+fn session_state() -> &'static Mutex<Option<Instant>> {
+    SESSION_START.get_or_init(|| Mutex::new(None))
 }
 
-/// Converts a monotonic nanosecond timestamp to microseconds, rounding down.
+/// Starts the shared timeline if no output session is active.
+/// Calling this while a session is active deliberately does nothing.
+pub fn start_session() {
+    let mut state = session_state().lock().unwrap_or_else(|e| e.into_inner());
+    if state.is_none() {
+        *state = Some(Instant::now());
+    }
+}
+
+/// Stops the shared timeline. Call only after BOTH live streaming and recording stop.
+pub fn stop_session() {
+    let mut state = session_state().lock().unwrap_or_else(|e| e.into_inner());
+    *state = None;
+}
+
+/// Nanoseconds elapsed since the active session began, or zero when stopped.
+pub fn session_now_ns() -> u64 {
+    let state = session_state().lock().unwrap_or_else(|e| e.into_inner());
+    match *state {
+        Some(start) => start.elapsed().as_nanos().min(i64::MAX as u128) as u64,
+        None => 0,
+    }
+}
+
+/// Converts a non-negative nanosecond timestamp to microseconds, rounding down.
 pub fn ns_to_us(timestamp_ns: u64) -> u64 {
     timestamp_ns / 1_000
 }
 
-/// Converts a monotonic nanosecond timestamp to milliseconds, rounding down.
+/// Converts a non-negative nanosecond timestamp to milliseconds, rounding down.
 pub fn ns_to_ms(timestamp_ns: u64) -> u64 {
     timestamp_ns / 1_000_000
 }
 
 // JNI entry points for com.example.core.clock.RustSyncEngine.
 #[no_mangle]
+pub extern "system" fn Java_com_example_core_clock_RustSyncEngine_nativeStartSession(
+    _env: *mut c_void,
+    _this: *mut c_void,
+) {
+    start_session();
+}
+
+#[no_mangle]
+pub extern "system" fn Java_com_example_core_clock_RustSyncEngine_nativeStopSession(
+    _env: *mut c_void,
+    _this: *mut c_void,
+) {
+    stop_session();
+}
+
+#[no_mangle]
 pub extern "system" fn Java_com_example_core_clock_RustSyncEngine_nativeNowNs(
     _env: *mut c_void,
     _this: *mut c_void,
 ) -> i64 {
-    monotonic_now_ns().min(i64::MAX as u64) as i64
+    session_now_ns().min(i64::MAX as u64) as i64
 }
 
 #[no_mangle]
@@ -62,22 +99,14 @@ mod tests {
     use super::*;
 
     #[test]
-    fn clock_is_monotonic_non_decreasing() {
-        let a = monotonic_now_ns();
-        let b = monotonic_now_ns();
-        assert!(b >= a);
+    fn stopped_clock_returns_zero() {
+        stop_session();
+        assert_eq!(session_now_ns(), 0);
     }
 
     #[test]
     fn timestamp_units_convert_downward() {
         assert_eq!(ns_to_us(1_999), 1);
         assert_eq!(ns_to_ms(1_999_999), 1);
-    }
-
-    #[test]
-    fn repeated_reads_share_the_same_timeline() {
-        let first = monotonic_now_ns();
-        let second = monotonic_now_ns();
-        assert!(second >= first);
     }
 }
