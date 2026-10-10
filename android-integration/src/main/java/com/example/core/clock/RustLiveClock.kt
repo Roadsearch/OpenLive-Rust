@@ -1,12 +1,14 @@
 package com.example.core.clock
 
+import java.util.concurrent.atomic.AtomicLong
+
 /**
  * Kotlin-side lifecycle adapter for RustSyncEngine.
  *
  * Track each output independently (for example "stream" and "recording").
  * The native timeline starts on the first active output and stops only after
- * the final output stops, preventing a recording start from resetting a live
- * stream's timestamps.
+ * the final output stops, preventing a recording start from resetting live
+ * stream timestamps.
  *
  * This is a migration reference, not yet wired into Roadsearch/OpenLive.
  */
@@ -14,29 +16,28 @@ class RustLiveClock {
     private val engine = RustSyncEngine()
     private val activeOutputs = mutableSetOf<String>()
 
-    @Volatile private var lastVideoPtsUs = 0L
-    @Volatile private var lastAudioPtsUs = 0L
-    @Volatile private var videoFrameCount = 0L
-    @Volatile private var audioSampleCount = 0L
+    private val lastVideoPtsUs = AtomicLong(0L)
+    private val lastAudioPtsUs = AtomicLong(0L)
+    private val videoFrameCount = AtomicLong(0L)
+    private val audioSampleCount = AtomicLong(0L)
 
     @Synchronized
     fun startOutput(outputId: String) {
         require(outputId.isNotBlank()) { "outputId must not be blank" }
-        val wasEmpty = activeOutputs.isEmpty()
-        activeOutputs.add(outputId)
-        if (wasEmpty && activeOutputs.isNotEmpty()) {
-            lastVideoPtsUs = 0L
-            lastAudioPtsUs = 0L
-            videoFrameCount = 0L
-            audioSampleCount = 0L
+        val added = activeOutputs.add(outputId)
+        if (added && activeOutputs.size == 1) {
+            lastVideoPtsUs.set(0L)
+            lastAudioPtsUs.set(0L)
+            videoFrameCount.set(0L)
+            audioSampleCount.set(0L)
             engine.nativeStartSession()
         }
     }
 
     @Synchronized
     fun stopOutput(outputId: String) {
-        activeOutputs.remove(outputId)
-        if (activeOutputs.isEmpty()) {
+        val removed = activeOutputs.remove(outputId)
+        if (removed && activeOutputs.isEmpty()) {
             engine.nativeStopSession()
         }
     }
@@ -46,22 +47,24 @@ class RustLiveClock {
     fun currentPtsUs(): Long = engine.nativeNsToUs(currentPtsNs())
 
     fun onVideoFramePresented(ptsUs: Long) {
-        lastVideoPtsUs = ptsUs
-        videoFrameCount++
+        lastVideoPtsUs.set(ptsUs.coerceAtLeast(0L))
+        videoFrameCount.incrementAndGet()
     }
 
     fun onAudioFramePresented(ptsUs: Long, samplesCount: Int) {
-        lastAudioPtsUs = ptsUs
-        audioSampleCount += samplesCount
+        lastAudioPtsUs.set(ptsUs.coerceAtLeast(0L))
+        if (samplesCount > 0) audioSampleCount.addAndGet(samplesCount.toLong())
     }
 
     fun getAvDriftMs(): Long {
-        if (lastVideoPtsUs == 0L || lastAudioPtsUs == 0L) return 0L
-        return (lastVideoPtsUs - lastAudioPtsUs) / 1_000L
+        val videoPts = lastVideoPtsUs.get()
+        val audioPts = lastAudioPtsUs.get()
+        if (videoPts == 0L || audioPts == 0L) return 0L
+        return (videoPts - audioPts) / 1_000L
     }
 
-    fun getVideoFrameCount(): Long = videoFrameCount
-    fun getAudioSampleCount(): Long = audioSampleCount
+    fun getVideoFrameCount(): Long = videoFrameCount.get()
+    fun getAudioSampleCount(): Long = audioSampleCount.get()
 
     @Synchronized
     fun activeOutputCount(): Int = activeOutputs.size
