@@ -12,6 +12,8 @@ repository is being developed independently of the Android application.
   do not depend on Android APIs.
 - `rust-sync-core/src/audio_clock.rs` — maps audio sample-frame indices to
   session-relative PTS using integer arithmetic, avoiding cumulative rounding drift.
+- `rust-sync-core/src/bounded_queue.rs` — bounded FIFO with explicit
+  `DropNewest` and `DropOldest` overflow policies and drop counters.
 - `android-integration/` — Kotlin JNI bridge and output-lifecycle adapter,
   with JVM tests. This is a reference integration, not a complete Android app.
 - `.github/workflows/rust-ci.yml` — formatting, Rust unit tests, and checks.
@@ -27,6 +29,14 @@ The clock is monotonic and session-relative; it is not UTC. Starting a second
 output must not reset the origin. The session should stop only after every
 output has stopped. Keep a single owner for each pipeline and validate timestamp
 units at the MediaCodec/audio-backend boundaries.
+
+### Bounded media queues
+
+`BoundedQueue` enforces a fixed capacity and makes overload behavior explicit.
+Use `DropOldest` for latency-sensitive preview video where fresh frames matter
+more than stale ones. Do not silently apply it to encoded audio: audio needs a
+separate back-pressure or discontinuity policy. This primitive is not internally
+thread-safe; the eventual producer/consumer pipeline must synchronize access.
 
 ### Audio sample clock
 
