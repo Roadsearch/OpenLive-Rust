@@ -32,10 +32,7 @@ impl<T> Clone for SharedBoundedQueue<T> {
 
 impl<T> SharedBoundedQueue<T> {
     /// Creates a queue shared by all clones. Capacity must be non-zero.
-    pub fn new(
-        capacity: usize,
-        policy: OverflowPolicy,
-    ) -> Result<Self, QueueCapacityError> {
+    pub fn new(capacity: usize, policy: OverflowPolicy) -> Result<Self, QueueCapacityError> {
         Ok(Self {
             inner: Arc::new(Mutex::new(BoundedQueue::new(capacity, policy)?)),
         })
@@ -43,7 +40,9 @@ impl<T> SharedBoundedQueue<T> {
 
     fn lock(&self) -> MutexGuard<'_, BoundedQueue<T>> {
         // Recover the queue after a panic while locked; keep the queue usable.
-        self.inner.lock().unwrap_or_else(|poisoned| poisoned.into_inner())
+        self.inner
+            .lock()
+            .unwrap_or_else(|poisoned| poisoned.into_inner())
     }
 
     /// Attempts to enqueue without exceeding the configured capacity.
@@ -122,16 +121,14 @@ mod tests {
 
         let consumer_queue = queue.clone();
         let consumer_finished = Arc::clone(&finished);
-        let consumer = thread::spawn(move || {
-            loop {
-                if consumer_queue.pop().is_some() {
-                    continue;
-                }
-                if consumer_finished.load(Ordering::Acquire) {
-                    break;
-                }
-                thread::yield_now();
+        let consumer = thread::spawn(move || loop {
+            if consumer_queue.pop().is_some() {
+                continue;
             }
+            if consumer_finished.load(Ordering::Acquire) {
+                break;
+            }
+            thread::yield_now();
         });
 
         producer.join().unwrap();
