@@ -4,6 +4,7 @@
 pub mod audio_clock;
 pub mod av_sync;
 pub mod bounded_queue;
+pub mod discontinuity;
 pub mod media_packet;
 pub mod media_scheduler;
 pub mod scheduler;
@@ -11,6 +12,10 @@ pub mod shared_queue;
 pub use audio_clock::{AudioClockError, AudioSampleClock};
 pub use av_sync::{AvSyncMonitor, AvSyncSnapshot, MonotonicPts};
 pub use bounded_queue::{BoundedQueue, OverflowPolicy, PushResult, QueueCapacityError};
+pub use discontinuity::{
+    DiscontinuityConfigError, DiscontinuityStats, NegativeTimestampError,
+    TimestampDiscontinuityDetector, TimestampEvent,
+};
 pub use media_packet::{MediaKind, MediaPacket, MediaPacketError};
 pub use media_scheduler::{
     MediaScheduler, MediaSchedulerSnapshot, SchedulerCapacityError, SchedulerPushResult,
