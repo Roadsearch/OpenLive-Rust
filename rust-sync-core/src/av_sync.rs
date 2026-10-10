@@ -165,11 +165,14 @@ mod tests {
         monitor.record_video(100);
         monitor.record_audio(90, 20);
         monitor.reset();
-        assert_eq!(monitor.snapshot(), AvSyncSnapshot {
-            last_video_pts_us: None,
-            last_audio_pts_us: None,
-            video_frames: 0,
-            audio_samples: 0,
-        });
+        assert_eq!(
+            monitor.snapshot(),
+            AvSyncSnapshot {
+                last_video_pts_us: None,
+                last_audio_pts_us: None,
+                video_frames: 0,
+                audio_samples: 0,
+            }
+        );
     }
 }
