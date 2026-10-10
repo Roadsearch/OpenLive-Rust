@@ -39,7 +39,9 @@ pub extern "system" fn Java_com_example_core_clock_RustSyncEngine_nativeNsToUs(
     _this: *mut c_void,
     timestamp_ns: i64,
 ) -> i64 {
-    if timestamp_ns < 0 { return 0; }
+    if timestamp_ns < 0 {
+        return 0;
+    }
     ns_to_us(timestamp_ns as u64).min(i64::MAX as u64) as i64
 }
 
@@ -49,7 +51,9 @@ pub extern "system" fn Java_com_example_core_clock_RustSyncEngine_nativeNsToMs(
     _this: *mut c_void,
     timestamp_ns: i64,
 ) -> i64 {
-    if timestamp_ns < 0 { return 0; }
+    if timestamp_ns < 0 {
+        return 0;
+    }
     ns_to_ms(timestamp_ns as u64).min(i64::MAX as u64) as i64
 }
 
