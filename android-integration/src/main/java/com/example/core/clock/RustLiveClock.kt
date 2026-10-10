@@ -90,7 +90,16 @@ class RustLiveClock internal constructor(private val engine: RustClockBackend) {
         val videoPts = lastVideoPtsUs.get()
         val audioPts = lastAudioPtsUs.get()
         if (videoPts == 0L || audioPts == 0L) return 0L
-        return (videoPts - audioPts) / 1_000L
+        // Saturation avoids Long overflow if a malformed upstream PTS is supplied.
+        return videoPts.saturatingSubtract(audioPts) / 1_000L
+    }
+
+    private fun Long.saturatingSubtract(other: Long): Long {
+        return when {
+            other > 0L && this < Long.MIN_VALUE + other -> Long.MIN_VALUE
+            other < 0L && this > Long.MAX_VALUE + other -> Long.MAX_VALUE
+            else -> this - other
+        }
     }
 
     fun getVideoFrameCount(): Long = videoFrameCount.get()
