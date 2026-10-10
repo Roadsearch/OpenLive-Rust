@@ -1,6 +1,9 @@
 //! Shared session clock primitives for coordinating live output and recording.
 //! Starting a second output is idempotent: it never resets the active session.
 
+pub mod av_sync;
+pub use av_sync::{AvSyncMonitor, AvSyncSnapshot, MonotonicPts};
+
 use std::ffi::c_void;
 use std::sync::{Mutex, OnceLock};
 use std::time::Instant;
