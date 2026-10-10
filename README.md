@@ -10,6 +10,8 @@ repository is being developed independently of the Android application.
   normalization.
 - `rust-sync-core/src/av_sync.rs` — host-testable A/V timing primitives that
   do not depend on Android APIs.
+- `rust-sync-core/src/audio_clock.rs` — maps audio sample-frame indices to
+  session-relative PTS using integer arithmetic, avoiding cumulative rounding drift.
 - `android-integration/` — Kotlin JNI bridge and output-lifecycle adapter,
   with JVM tests. This is a reference integration, not a complete Android app.
 - `.github/workflows/rust-ci.yml` — formatting, Rust unit tests, and checks.
@@ -25,6 +27,15 @@ The clock is monotonic and session-relative; it is not UTC. Starting a second
 output must not reset the origin. The session should stop only after every
 output has stopped. Keep a single owner for each pipeline and validate timestamp
 units at the MediaCodec/audio-backend boundaries.
+
+### Audio sample clock
+
+`AudioSampleClock` maps a sample-frame index to microseconds using the actual
+sample rate. Advance it by frames per channel, not the total number of
+interleaved channel samples. Deriving PTS from the absolute sample index avoids
+cumulative rounding errors from repeatedly adding rounded buffer durations.
+The current implementation is a timing primitive; it does not capture audio or
+know how many frames a device has actually played.
 
 ### A/V drift monitor
 
@@ -59,7 +70,7 @@ the current diagnostics as a complete production streaming engine.
 ## Roadmap
 
 1. Harden timebase and session/output lifecycle contracts.
-2. Introduce deterministic audio timing and sample-index mapping.
+2. Connect the sample clock to real audio capture/playback position and resampling.
 3. Add bounded audio/video queues and explicit back-pressure policies.
 4. Add a media pipeline abstraction for capture, encoding, muxing, and output.
 5. Integrate Android audio/codec backends through a narrow JNI boundary.
