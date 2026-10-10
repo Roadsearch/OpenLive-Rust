@@ -1,31 +1,51 @@
 # OpenLive-Rust
 
-Rust-first synchronization core for the Android OpenLive streaming app.
+Rust session-clock prototype for the Android OpenLive streaming app.
 
 ## Scope
 
-This repository starts with a small, testable monotonic clock for audio/video timestamps. Android camera, audio capture, MediaCodec, OpenGL, lifecycle, and UI remain in Kotlin until the Rust core is validated.
+The first migration slice is a shared, session-relative monotonic clock. It is
+designed to prevent starting recording while a live stream is active from
+resetting the shared A/V timestamp origin.
+
+Android camera capture, audio capture/mixing, MediaCodec, OpenGL, RTMP/MP4
+outputs, lifecycle, and UI remain in Kotlin while this clock is tested.
 
 ## Layout
 
-- `rust-sync-core/` — Rust library and unit tests.
-- `app/` — Android integration notes and JNI wrapper example (to be connected to the original Android project).
-- `.github/workflows/` — Rust CI.
+- `rust-sync-core/` — Rust clock, JNI exports, and unit tests.
+- `android-integration/` — Kotlin JNI bridge and reference-counted lifecycle adapter.
+- `.github/workflows/rust-ci.yml` — formatting, unit tests, and Rust checks.
+- `.github/workflows/android-native.yml` — builds Android shared libraries for
+  `arm64-v8a` and `armeabi-v7a`, then publishes them as a workflow artifact.
 
 ## Status
 
-Initial scaffold only. JNI/Android integration and end-to-end A/V tests are not yet validated.
+Prototype scaffold. The Rust unit-test workflow has passed. Android cross-build
+and on-device JNI verification are still in progress; the adapter is not yet
+wired into `Roadsearch/OpenLive`.
 
-## Local tests
+## Local Rust tests
 
 ```sh
 cd rust-sync-core
-cargo test
+cargo fmt --all -- --check
+cargo test --all-targets
+cargo check --all-targets
 ```
 
-## Integration strategy
+## Android integration contract
 
-1. Establish one monotonic timeline shared by live streaming and local recording.
-2. Keep timestamps in nanoseconds internally; convert only at API boundaries.
-3. Never reset the clock when starting or stopping an individual output.
-4. Integrate through JNI only after the Android package and native library loading path are confirmed.
+Use one `RustLiveClock` owned by the pipeline. Call
+`startOutput("stream")` when live output starts and
+`startOutput("recording")` when local recording starts. Stop each output by
+its matching ID. The native session starts on the first output and ends only
+when the final output stops.
+
+The Kotlin bridge expects `librust_sync_core.so` to be packaged for each device
+ABI under `app/src/main/jniLibs/<abi>/`. The Android Actions workflow publishes
+the compiled libraries as an artifact; download and copy them before enabling
+the bridge in the app.
+
+**Do not replace production `LiveClock` until the native library loads on a
+physical device and end-to-end audio/video synchronization tests pass.**
