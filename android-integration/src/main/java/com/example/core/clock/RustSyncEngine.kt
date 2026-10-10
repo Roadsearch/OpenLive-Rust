@@ -1,10 +1,12 @@
 package com.example.core.clock
 
 /**
- * JNI bridge to the Rust monotonic clock.
+ * JNI bridge to the Rust session clock.
  *
- * Keep one shared timeline for live streaming and recording. Do not create a
- * new clock per output or reset it when starting/stopping a sink.
+ * Use one shared instance for the entire LivePipeline. Call startSession()
+ * when the first output (live OR recording) starts, and stopSession() only
+ * after every output has stopped. Starting a second output is idempotent and
+ * does not reset timestamps.
  */
 class RustSyncEngine {
     companion object {
@@ -13,7 +15,13 @@ class RustSyncEngine {
         }
     }
 
-    /** Monotonic nanoseconds from the shared Rust epoch. Not wall-clock time. */
+    /** Starts the session timeline if it is not already active. */
+    external fun nativeStartSession()
+
+    /** Stops the timeline; call only when streaming AND recording are stopped. */
+    external fun nativeStopSession()
+
+    /** Nanoseconds since the active session started, or zero when stopped. */
     external fun nativeNowNs(): Long
 
     /** Converts a non-negative nanosecond timestamp to microseconds. */
