@@ -1,0 +1,13 @@
+[package]
+name = "rust-sync-core"
+version = "0.1.0"
+edition = "2021"
+license = "MIT"
+description = "Monotonic timing primitives for OpenLive audio/video synchronization"
+
+[lib]
+name = "rust_sync_core"
+crate-type = ["rlib", "cdylib"]
+
+[dependencies]
+
