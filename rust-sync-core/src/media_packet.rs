@@ -90,8 +90,8 @@ mod tests {
 
     #[test]
     fn constructs_audio_packet_with_valid_timing_metadata() {
-        let packet = MediaPacket::new(MediaKind::Audio, 20_000, Some(10_000), 7, vec![1, 2])
-            .unwrap();
+        let packet =
+            MediaPacket::new(MediaKind::Audio, 20_000, Some(10_000), 7, vec![1, 2]).unwrap();
         assert_eq!(packet.kind(), MediaKind::Audio);
         assert_eq!(packet.pts_us(), 20_000);
         assert_eq!(packet.duration_us(), Some(10_000));
@@ -124,8 +124,8 @@ mod tests {
 
     #[test]
     fn payload_can_be_mutated_or_taken_without_copying() {
-        let mut packet = MediaPacket::new(MediaKind::Video, 33_333, Some(33_333), 1, vec![1])
-            .unwrap();
+        let mut packet =
+            MediaPacket::new(MediaKind::Video, 33_333, Some(33_333), 1, vec![1]).unwrap();
         packet.payload_mut().push(2);
         assert_eq!(packet.into_payload(), vec![1, 2]);
     }
