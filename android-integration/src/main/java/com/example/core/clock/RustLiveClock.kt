@@ -3,6 +3,26 @@ package com.example.core.clock
 import java.util.concurrent.atomic.AtomicLong
 
 /**
+ * Small boundary that keeps output-lifecycle behavior testable without loading JNI.
+ * The production implementation delegates to [RustSyncEngine].
+ */
+internal interface RustClockBackend {
+    fun startSession()
+    fun stopSession()
+    fun nowNs(): Long
+    fun nsToUs(timestampNs: Long): Long
+}
+
+private class JniRustClockBackend : RustClockBackend {
+    private val engine = RustSyncEngine()
+
+    override fun startSession() = engine.nativeStartSession()
+    override fun stopSession() = engine.nativeStopSession()
+    override fun nowNs(): Long = engine.nativeNowNs()
+    override fun nsToUs(timestampNs: Long): Long = engine.nativeNsToUs(timestampNs)
+}
+
+/**
  * Kotlin-side lifecycle adapter for RustSyncEngine.
  *
  * Track each output independently (for example "stream" and "recording").
@@ -10,10 +30,14 @@ import java.util.concurrent.atomic.AtomicLong
  * the final output stops, preventing a recording start from resetting live
  * stream timestamps.
  *
+ * The public no-argument constructor uses JNI. The internal constructor accepts
+ * a fake backend for JVM lifecycle tests.
+ *
  * This is a migration reference, not yet wired into Roadsearch/OpenLive.
  */
-class RustLiveClock {
-    private val engine = RustSyncEngine()
+class RustLiveClock internal constructor(private val engine: RustClockBackend) {
+    constructor() : this(JniRustClockBackend())
+
     private val activeOutputs = mutableSetOf<String>()
 
     private val lastVideoPtsUs = AtomicLong(0L)
@@ -30,7 +54,7 @@ class RustLiveClock {
             lastAudioPtsUs.set(0L)
             videoFrameCount.set(0L)
             audioSampleCount.set(0L)
-            engine.nativeStartSession()
+            engine.startSession()
         }
     }
 
@@ -38,24 +62,30 @@ class RustLiveClock {
     fun stopOutput(outputId: String) {
         val removed = activeOutputs.remove(outputId)
         if (removed && activeOutputs.isEmpty()) {
-            engine.nativeStopSession()
+            engine.stopSession()
         }
     }
 
-    fun currentPtsNs(): Long = engine.nativeNowNs()
+    fun currentPtsNs(): Long = engine.nowNs()
 
-    fun currentPtsUs(): Long = engine.nativeNsToUs(currentPtsNs())
+    fun currentPtsUs(): Long = engine.nsToUs(currentPtsNs())
 
     fun onVideoFramePresented(ptsUs: Long) {
         lastVideoPtsUs.set(ptsUs.coerceAtLeast(0L))
         videoFrameCount.incrementAndGet()
     }
 
+    /**
+     * Records timestamps that have already been normalized into the same
+     * session-relative timebase. The result is only a useful drift estimate
+     * when audio and video callbacks use that shared timebase.
+     */
     fun onAudioFramePresented(ptsUs: Long, samplesCount: Int) {
         lastAudioPtsUs.set(ptsUs.coerceAtLeast(0L))
         if (samplesCount > 0) audioSampleCount.addAndGet(samplesCount.toLong())
     }
 
+    /** Signed video-minus-audio difference in milliseconds. */
     fun getAvDriftMs(): Long {
         val videoPts = lastVideoPtsUs.get()
         val audioPts = lastAudioPtsUs.get()
