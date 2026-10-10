@@ -20,6 +20,8 @@ repository is being developed independently of the Android application.
   session-relative PTS, optional positive duration, sequence number, and payload.
 - `rust-sync-core/src/scheduler.rs` — per-track packet PTS ordering diagnostics,
   repeated/backwards timestamp counters, and audio/video high-water-mark skew.
+- `rust-sync-core/src/media_scheduler.rs` — bounded per-track packet buffers,
+  PTS-sorted insertion, cross-track earliest-PTS selection, and explicit overflow policies.
 - `android-integration/` — Kotlin JNI bridge and output-lifecycle adapter,
   with JVM tests. This is a reference integration, not a complete Android app.
 - `.github/workflows/rust-ci.yml` — formatting, Rust unit tests, and checks.
@@ -47,8 +49,12 @@ blocking channel: consumers must provide their own wake-up/polling strategy.
 `MediaPacket` standardizes packet metadata in microseconds; it does not perform
 capture, encoding, scheduling, or muxing. `PacketOrderTracker` classifies PTS
 progression independently per track and exposes a high-water-mark skew. It does
-not reorder or discard packets; the pipeline owner must choose that policy. Keep
-audio and video PTS in the same session-relative timebase before comparing them.
+not reorder or discard packets; the pipeline owner must choose that policy.
+`MediaScheduler` is a separate bounded queue primitive: it sorts buffered packets
+by PTS and emits the earliest queued packet across tracks. Its overflow policy is
+per track, and it is not a real-time playback loop; the caller must still manage
+clock deadlines, decoder readiness, audio-device back-pressure, and discontinuities.
+Keep audio and video PTS in the same session-relative timebase before comparing them.
 
 ### Audio sample clock
 
