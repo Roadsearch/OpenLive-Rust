@@ -254,7 +254,7 @@ mod tests {
 
     #[test]
     fn drop_oldest_evicts_smallest_pts_not_oldest_arrival() {
-        let mut scheduler = scheduler(2, 2, OverflowPolicy::DropOldest, OverflowPolicy::DropNewest);
+        let mut scheduler = scheduler(2, 2, OverflowPolicy::DropNewest, OverflowPolicy::DropOldest);
         scheduler.push(packet(MediaKind::Video, 30, 0, "v30"));
         scheduler.push(packet(MediaKind::Video, 10, 1, "v10"));
         assert_eq!(
