@@ -14,6 +14,8 @@ repository is being developed independently of the Android application.
   session-relative PTS using integer arithmetic, avoiding cumulative rounding drift.
 - `rust-sync-core/src/bounded_queue.rs` — bounded FIFO with explicit
   `DropNewest` and `DropOldest` overflow policies and drop counters.
+- `rust-sync-core/src/shared_queue.rs` — mutex-protected, cloneable queue for
+  producer/consumer threads, with consistent capacity/length/drop snapshots.
 - `android-integration/` — Kotlin JNI bridge and output-lifecycle adapter,
   with JVM tests. This is a reference integration, not a complete Android app.
 - `.github/workflows/rust-ci.yml` — formatting, Rust unit tests, and checks.
@@ -35,8 +37,9 @@ units at the MediaCodec/audio-backend boundaries.
 `BoundedQueue` enforces a fixed capacity and makes overload behavior explicit.
 Use `DropOldest` for latency-sensitive preview video where fresh frames matter
 more than stale ones. Do not silently apply it to encoded audio: audio needs a
-separate back-pressure or discontinuity policy. This primitive is not internally
-thread-safe; the eventual producer/consumer pipeline must synchronize access.
+separate back-pressure or discontinuity policy. The base primitive is not internally thread-safe; use `SharedBoundedQueue`
+for simple concurrent hand-off. The shared wrapper uses a mutex and is not a
+blocking channel: consumers must provide their own wake-up/polling strategy.
 
 ### Audio sample clock
 
