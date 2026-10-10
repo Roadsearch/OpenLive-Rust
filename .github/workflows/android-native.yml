@@ -38,10 +38,33 @@ jobs:
       - name: Build shared libraries
         working-directory: rust-sync-core
         run: cargo ndk -t arm64-v8a -t armeabi-v7a -o ../android-integration/jniLibs build --release
-      - name: Verify native libraries exist
+      - name: Verify native libraries and JNI exports
+        shell: bash
         run: |
-          test -f android-integration/jniLibs/arm64-v8a/librust_sync_core.so
-          test -f android-integration/jniLibs/armeabi-v7a/librust_sync_core.so
+          set -euo pipefail
+          LLVM_NM="$ANDROID_NDK_HOME/toolchains/llvm/prebuilt/linux-x86_64/bin/llvm-nm"
+          LIBS=(
+            "android-integration/jniLibs/arm64-v8a/librust_sync_core.so"
+            "android-integration/jniLibs/armeabi-v7a/librust_sync_core.so"
+          )
+          SYMBOLS=(
+            "Java_com_example_core_clock_RustSyncEngine_nativeStartSession"
+            "Java_com_example_core_clock_RustSyncEngine_nativeStopSession"
+            "Java_com_example_core_clock_RustSyncEngine_nativeNowNs"
+            "Java_com_example_core_clock_RustSyncEngine_nativeNsToUs"
+            "Java_com_example_core_clock_RustSyncEngine_nativeNsToMs"
+          )
+          for lib in "${LIBS[@]}"; do
+            test -f "$lib"
+            echo "Checking JNI exports in $lib"
+            exports="$("$LLVM_NM" -D --defined-only "$lib")"
+            for symbol in "${SYMBOLS[@]}"; do
+              if ! grep -Fq "$symbol" <<< "$exports"; then
+                echo "Missing JNI symbol: $symbol in $lib" >&2
+                exit 1
+              fi
+            done
+          done
       - uses: actions/upload-artifact@v4
         with:
           name: openlive-rust-android-libraries
