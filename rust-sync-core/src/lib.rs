@@ -5,10 +5,12 @@ pub mod audio_clock;
 pub mod av_sync;
 pub mod bounded_queue;
 pub mod shared_queue;
+pub mod media_packet;
 pub use audio_clock::{AudioClockError, AudioSampleClock};
 pub use av_sync::{AvSyncMonitor, AvSyncSnapshot, MonotonicPts};
 pub use bounded_queue::{BoundedQueue, OverflowPolicy, PushResult, QueueCapacityError};
 pub use shared_queue::{SharedBoundedQueue, SharedQueueStats};
+pub use media_packet::{MediaKind, MediaPacket, MediaPacketError};
 
 use std::ffi::c_void;
 use std::sync::{Mutex, OnceLock};
