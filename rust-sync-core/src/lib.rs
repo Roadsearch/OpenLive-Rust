@@ -114,26 +114,69 @@ mod tests {
     use super::*;
 
     #[test]
-    fn session_clock_starts_stops_and_restarts() {
+    fn session_clock_start_is_idempotent_and_stop_allows_restart() {
         let mut clock = SessionClock::default();
         assert_eq!(clock.now_ns(), 0);
+        assert!(clock.started_at.is_none());
 
         clock.start();
-        let first = clock.now_ns();
-        clock.start(); // Starting a second output must not reset the origin.
-        assert!(clock.now_ns() >= first);
+        let first_origin = clock.started_at.expect("start should set an origin");
+        let first_elapsed = clock.now_ns();
+
+        clock.start(); // A second output must preserve the original origin.
+        assert_eq!(clock.started_at, Some(first_origin));
+        assert!(clock.now_ns() >= first_elapsed);
 
         clock.stop();
         assert_eq!(clock.now_ns(), 0);
+        assert!(clock.started_at.is_none());
+
         clock.start();
-        assert!(clock.now_ns() >= 0);
+        assert!(clock.started_at.is_some());
+        assert!(clock.now_ns() <= i64::MAX as u64);
     }
 
     #[test]
-    fn timestamp_units_convert_downward() {
+    fn timestamp_units_convert_downward_without_overflow() {
         assert_eq!(ns_to_us(1_999), 1);
         assert_eq!(ns_to_ms(1_999_999), 1);
         assert_eq!(ns_to_us(0), 0);
         assert_eq!(ns_to_ms(u64::MAX), u64::MAX / 1_000_000);
+    }
+
+    #[test]
+    fn jni_conversions_clamp_negative_timestamps_and_convert_positive_values() {
+        assert_eq!(
+            Java_com_example_core_clock_RustSyncEngine_nativeNsToUs(
+                std::ptr::null_mut(),
+                std::ptr::null_mut(),
+                -1
+            ),
+            0
+        );
+        assert_eq!(
+            Java_com_example_core_clock_RustSyncEngine_nativeNsToMs(
+                std::ptr::null_mut(),
+                std::ptr::null_mut(),
+                -1
+            ),
+            0
+        );
+        assert_eq!(
+            Java_com_example_core_clock_RustSyncEngine_nativeNsToUs(
+                std::ptr::null_mut(),
+                std::ptr::null_mut(),
+                1_999
+            ),
+            1
+        );
+        assert_eq!(
+            Java_com_example_core_clock_RustSyncEngine_nativeNsToMs(
+                std::ptr::null_mut(),
+                std::ptr::null_mut(),
+                1_999_999
+            ),
+            1
+        );
     }
 }
