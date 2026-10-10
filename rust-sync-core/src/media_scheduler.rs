@@ -158,6 +158,23 @@ impl<T> MediaScheduler<T> {
         }
     }
 
+    /// Returns the earliest queued presentation timestamp without consuming a packet.
+    pub fn peek_next_pts_us(&self) -> Option<i64> {
+        match (self.audio.front(), self.video.front()) {
+            (None, None) => None,
+            (Some(packet), None) | (None, Some(packet)) => Some(packet.pts_us()),
+            (Some(audio), Some(video)) => Some(audio.pts_us().min(video.pts_us())),
+        }
+    }
+
+    /// Reports whether the selected track has reached its configured capacity.
+    pub fn is_full(&self, kind: MediaKind) -> bool {
+        match kind {
+            MediaKind::Audio => self.audio.len() >= self.audio_capacity,
+            MediaKind::Video => self.video.len() >= self.video_capacity,
+        }
+    }
+
     /// Clears pending packets but retains counters for diagnostics.
     pub fn clear(&mut self) {
         self.audio.clear();
@@ -264,6 +281,28 @@ mod tests {
         assert_eq!(scheduler.pop_next().unwrap().payload(), &"v20");
         assert_eq!(scheduler.pop_next().unwrap().payload(), &"v30");
         assert_eq!(scheduler.snapshot().video.dropped_packets, 1);
+    }
+
+    #[test]
+    fn peek_reports_earliest_pts_without_consuming_packet() {
+        let mut scheduler = scheduler(2, 2, OverflowPolicy::DropNewest, OverflowPolicy::DropNewest);
+        assert_eq!(scheduler.peek_next_pts_us(), None);
+        scheduler.push(packet(MediaKind::Video, 30, 0, "v30"));
+        scheduler.push(packet(MediaKind::Audio, 10, 0, "a10"));
+        assert_eq!(scheduler.peek_next_pts_us(), Some(10));
+        assert_eq!(scheduler.snapshot().audio.queued_packets, 1);
+        assert_eq!(scheduler.pop_next().unwrap().payload(), &"a10");
+        assert_eq!(scheduler.peek_next_pts_us(), Some(30));
+    }
+
+    #[test]
+    fn full_status_is_track_specific() {
+        let mut scheduler = scheduler(1, 2, OverflowPolicy::DropNewest, OverflowPolicy::DropNewest);
+        assert!(!scheduler.is_full(MediaKind::Audio));
+        assert!(!scheduler.is_full(MediaKind::Video));
+        scheduler.push(packet(MediaKind::Audio, 10, 0, "a10"));
+        assert!(scheduler.is_full(MediaKind::Audio));
+        assert!(!scheduler.is_full(MediaKind::Video));
     }
 
     #[test]
