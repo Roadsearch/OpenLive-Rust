@@ -36,7 +36,8 @@ jobs:
       - name: Install cargo-ndk
         run: cargo install cargo-ndk --locked
       - name: Build shared libraries
-        run: cargo ndk -t arm64-v8a -t armeabi-v7a -o android-integration/jniLibs build --manifest-path rust-sync-core/Cargo.toml --release
+        working-directory: rust-sync-core
+        run: cargo ndk -t arm64-v8a -t armeabi-v7a -o ../android-integration/jniLibs build --release
       - name: Verify native libraries exist
         run: |
           test -f android-integration/jniLibs/arm64-v8a/librust_sync_core.so
