@@ -83,6 +83,8 @@ impl<T> SharedBoundedQueue<T> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::sync::atomic::{AtomicBool, Ordering};
+    use std::sync::Arc;
     use std::thread;
 
     #[test]
@@ -109,30 +111,31 @@ mod tests {
     fn supports_concurrent_producer_and_consumer_access() {
         let queue = SharedBoundedQueue::new(64, OverflowPolicy::DropNewest).unwrap();
         let producer_queue = queue.clone();
+        let finished = Arc::new(AtomicBool::new(false));
+        let producer_finished = Arc::clone(&finished);
         let producer = thread::spawn(move || {
             for value in 0..10_000 {
                 let _ = producer_queue.push(value);
             }
+            producer_finished.store(true, Ordering::Release);
         });
 
-        let observer = producer.clone();
         let consumer_queue = queue.clone();
+        let consumer_finished = Arc::clone(&finished);
         let consumer = thread::spawn(move || {
-            let mut consumed = 0usize;
-            while consumed < 10_000 {
+            loop {
                 if consumer_queue.pop().is_some() {
-                    consumed += 1;
-                } else if observer.is_finished() {
-                    break;
-                } else {
-                    thread::yield_now();
+                    continue;
                 }
+                if consumer_finished.load(Ordering::Acquire) {
+                    break;
+                }
+                thread::yield_now();
             }
-            consumed
         });
 
-        let _ = producer.join();
-        let _ = consumer.join();
+        producer.join().unwrap();
+        consumer.join().unwrap();
         assert!(queue.stats().len <= 64);
     }
 
