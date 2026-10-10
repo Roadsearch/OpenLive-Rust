@@ -43,9 +43,8 @@ impl AudioSampleClock {
     /// PTS for a zero-based sample-frame index, relative to the origin.
     /// Uses wide integer math to avoid cumulative rounding error and overflow.
     pub fn pts_us_for_sample(&self, sample_frame: u64) -> i64 {
-        let elapsed_us = (sample_frame as u128)
-            .saturating_mul(1_000_000)
-            / self.sample_rate_hz as u128;
+        let elapsed_us =
+            (sample_frame as u128).saturating_mul(1_000_000) / self.sample_rate_hz as u128;
         let total = (self.origin_pts_us as u128).saturating_add(elapsed_us);
         total.min(i64::MAX as u128) as i64
     }
