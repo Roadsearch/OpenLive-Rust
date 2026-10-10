@@ -126,10 +126,22 @@ mod tests {
     #[test]
     fn tracks_audio_and_video_order_independently() {
         let mut tracker = PacketOrderTracker::new();
-        assert_eq!(tracker.observe(&packet(MediaKind::Video, 33_000, 0)), PacketOrder::First);
-        assert_eq!(tracker.observe(&packet(MediaKind::Audio, 10_000, 0)), PacketOrder::First);
-        assert_eq!(tracker.observe(&packet(MediaKind::Audio, 20_000, 1)), PacketOrder::InOrder);
-        assert_eq!(tracker.observe(&packet(MediaKind::Video, 66_000, 1)), PacketOrder::InOrder);
+        assert_eq!(
+            tracker.observe(&packet(MediaKind::Video, 33_000, 0)),
+            PacketOrder::First
+        );
+        assert_eq!(
+            tracker.observe(&packet(MediaKind::Audio, 10_000, 0)),
+            PacketOrder::First
+        );
+        assert_eq!(
+            tracker.observe(&packet(MediaKind::Audio, 20_000, 1)),
+            PacketOrder::InOrder
+        );
+        assert_eq!(
+            tracker.observe(&packet(MediaKind::Video, 66_000, 1)),
+            PacketOrder::InOrder
+        );
 
         let snapshot = tracker.snapshot();
         assert_eq!(snapshot.audio.high_watermark_pts_us, Some(20_000));
@@ -141,8 +153,14 @@ mod tests {
     fn repeated_and_backwards_pts_do_not_lower_watermark() {
         let mut tracker = PacketOrderTracker::new();
         tracker.observe(&packet(MediaKind::Audio, 100, 0));
-        assert_eq!(tracker.observe(&packet(MediaKind::Audio, 100, 1)), PacketOrder::RepeatedPts);
-        assert_eq!(tracker.observe(&packet(MediaKind::Audio, 90, 2)), PacketOrder::OutOfOrder);
+        assert_eq!(
+            tracker.observe(&packet(MediaKind::Audio, 100, 1)),
+            PacketOrder::RepeatedPts
+        );
+        assert_eq!(
+            tracker.observe(&packet(MediaKind::Audio, 90, 2)),
+            PacketOrder::OutOfOrder
+        );
         let stats = tracker.snapshot().audio;
         assert_eq!(stats.high_watermark_pts_us, Some(100));
         assert_eq!(stats.observed_packets, 3);
