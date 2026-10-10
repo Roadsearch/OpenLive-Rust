@@ -1,32 +1,46 @@
 # OpenLive-Rust
 
-Rust session-clock prototype for the Android OpenLive streaming app.
+Rust-first media timing and synchronization core for the OpenLive project. The
+repository is being developed independently of the Android application.
 
-## Scope
+## Current implementation
 
-The first migration slice is a shared, session-relative monotonic clock. It
-prevents starting a second output (for example recording while streaming) from
-resetting the shared A/V timestamp origin.
-
-Android camera capture, audio capture/mixing, MediaCodec, OpenGL, RTMP/MP4
-outputs, lifecycle, and UI remain in Kotlin while this clock is tested.
-
-## Layout
-
-- `rust-sync-core/` — Rust clock, JNI exports, and unit tests.
-- `android-integration/` — Kotlin JNI bridge and output-lifecycle adapter.
-- `.github/workflows/rust-ci.yml` — formatting, unit tests, and Rust checks.
+- `rust-sync-core/` — monotonic session clock, JNI exports, unit conversions,
+  A/V drift diagnostics, and per-track monotonic presentation-timestamp (PTS)
+  normalization.
+- `rust-sync-core/src/av_sync.rs` — host-testable A/V timing primitives that
+  do not depend on Android APIs.
+- `android-integration/` — Kotlin JNI bridge and output-lifecycle adapter,
+  with JVM tests. This is a reference integration, not a complete Android app.
+- `.github/workflows/rust-ci.yml` — formatting, Rust unit tests, and checks.
 - `.github/workflows/android-native.yml` — builds Android shared libraries for
-  `arm64-v8a` and `armeabi-v7a`, then publishes them as a workflow artifact.
+  `arm64-v8a` and `armeabi-v7a`.
+- `.github/workflows/kotlin-ci.yml` — tests the Kotlin adapter on the JVM.
 
-## Status
+## Synchronization contracts
 
-The Rust CI and Android native cross-build have passed in GitHub Actions.
-The Kotlin adapter is still a reference integration, not a complete Android
-Gradle module and not yet wired into `Roadsearch/OpenLive`. No physical-device
-JNI or end-to-end A/V synchronization test has been performed yet.
+### Shared session clock
 
-## Local Rust tests
+The clock is monotonic and session-relative; it is not UTC. Starting a second
+output must not reset the origin. The session should stop only after every
+output has stopped. Keep a single owner for each pipeline and validate timestamp
+units at the MediaCodec/audio-backend boundaries.
+
+### A/V drift monitor
+
+`AvSyncMonitor` accepts audio and video PTS already converted to the same
+microsecond timebase. It reports signed drift as **video PTS minus audio PTS**:
+positive means video timestamps are ahead; negative means they are behind.
+It is diagnostic only; it does not yet schedule, drop, or delay media.
+
+### Monotonic PTS normalization
+
+Create one `MonotonicPts` per output track. It clamps negative values and
+repairs repeated or backward timestamps. This is a safety utility for invalid
+inputs, not a substitute for preserving valid source PTS, DTS/PTS reordering,
+or a proper resampling / audio-device clock model.
+
+## Local checks
 
 ```sh
 cd rust-sync-core
@@ -35,18 +49,19 @@ cargo test --all-targets
 cargo check --all-targets
 ```
 
-## Android integration contract
+## Android integration status
 
-Use one `RustLiveClock` owned by the pipeline. Call
-`startOutput("stream")` when live output starts and
-`startOutput("recording")` when local recording starts. Stop each output by
-its matching ID. The native session starts on the first output and ends only
-when the final output stops. Stopping an unknown output ID has no effect.
+The Kotlin adapter is not wired into `Roadsearch/OpenLive`. Android CI builds
+native libraries and verifies JNI symbols, but no physical-device JNI test or
+end-to-end audio/video synchronization test has been performed. Do not treat
+the current diagnostics as a complete production streaming engine.
 
-The Kotlin bridge expects `librust_sync_core.so` to be packaged for each device
-ABI under `app/src/main/jniLibs/<abi>/`. The Android Actions workflow publishes
-the compiled libraries as an artifact; download and copy them before enabling
-the bridge in the app.
+## Roadmap
 
-**Do not replace production `LiveClock` until the native library loads on a
-physical device and end-to-end audio/video synchronization tests pass.**
+1. Harden timebase and session/output lifecycle contracts.
+2. Introduce deterministic audio timing and sample-index mapping.
+3. Add bounded audio/video queues and explicit back-pressure policies.
+4. Add a media pipeline abstraction for capture, encoding, muxing, and output.
+5. Integrate Android audio/codec backends through a narrow JNI boundary.
+6. Add instrumentation and long-duration device tests for drift, pause/restart,
+   concurrent stream/record outputs, and failure recovery.
