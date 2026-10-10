@@ -20,6 +20,9 @@ repository is being developed independently of the Android application.
   session-relative PTS, optional positive duration, sequence number, and payload.
 - `rust-sync-core/src/scheduler.rs` — per-track packet PTS ordering diagnostics,
   repeated/backwards timestamp counters, and audio/video high-water-mark skew.
+- `rust-sync-core/src/discontinuity.rs` — per-track detection of repeated PTS,
+  forward gaps, out-of-order timestamps, and large backward jumps; detection only,
+  leaving recovery and timestamp repair to the pipeline owner.
 - `rust-sync-core/src/media_scheduler.rs` — bounded per-track packet buffers,
   PTS-sorted insertion, cross-track earliest-PTS selection, and explicit overflow policies.
 - `android-integration/` — Kotlin JNI bridge and output-lifecycle adapter,
