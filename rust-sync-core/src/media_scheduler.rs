@@ -113,9 +113,7 @@ impl<T> MediaScheduler<T> {
         let key_sequence = packet.sequence();
         let insertion_index = queue
             .iter()
-            .position(|queued| {
-                (queued.pts_us(), queued.sequence()) > (key_pts, key_sequence)
-            })
+            .position(|queued| (queued.pts_us(), queued.sequence()) > (key_pts, key_sequence))
             .unwrap_or(queue.len());
         queue.insert(insertion_index, packet);
 
@@ -195,16 +193,37 @@ mod tests {
 
     #[test]
     fn rejects_zero_capacity_for_either_track() {
-        assert!(MediaScheduler::<()>::new(0, 1, OverflowPolicy::DropNewest, OverflowPolicy::DropOldest).is_err());
-        assert!(MediaScheduler::<()>::new(1, 0, OverflowPolicy::DropNewest, OverflowPolicy::DropOldest).is_err());
+        assert!(MediaScheduler::<()>::new(
+            0,
+            1,
+            OverflowPolicy::DropNewest,
+            OverflowPolicy::DropOldest
+        )
+        .is_err());
+        assert!(MediaScheduler::<()>::new(
+            1,
+            0,
+            OverflowPolicy::DropNewest,
+            OverflowPolicy::DropOldest
+        )
+        .is_err());
     }
 
     #[test]
     fn emits_global_earliest_pts_even_when_arrivals_are_out_of_order() {
         let mut scheduler = scheduler(4, 4, OverflowPolicy::DropNewest, OverflowPolicy::DropNewest);
-        assert_eq!(scheduler.push(packet(MediaKind::Video, 30, 0, "v30")), SchedulerPushResult::Queued);
-        assert_eq!(scheduler.push(packet(MediaKind::Audio, 10, 0, "a10")), SchedulerPushResult::Queued);
-        assert_eq!(scheduler.push(packet(MediaKind::Audio, 5, 1, "a5")), SchedulerPushResult::Queued);
+        assert_eq!(
+            scheduler.push(packet(MediaKind::Video, 30, 0, "v30")),
+            SchedulerPushResult::Queued
+        );
+        assert_eq!(
+            scheduler.push(packet(MediaKind::Audio, 10, 0, "a10")),
+            SchedulerPushResult::Queued
+        );
+        assert_eq!(
+            scheduler.push(packet(MediaKind::Audio, 5, 1, "a5")),
+            SchedulerPushResult::Queued
+        );
         assert_eq!(scheduler.pop_next().unwrap().payload(), &"a5");
         assert_eq!(scheduler.pop_next().unwrap().payload(), &"a10");
         assert_eq!(scheduler.pop_next().unwrap().payload(), &"v30");
