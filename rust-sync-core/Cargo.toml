@@ -10,4 +10,4 @@ name = "rust_sync_core"
 crate-type = ["rlib", "cdylib"]
 
 [dependencies]
-
+jni = "0.21.1"
