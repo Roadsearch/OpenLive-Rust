@@ -53,6 +53,9 @@ jobs:
             "Java_com_example_core_clock_RustSyncEngine_nativeNowNs"
             "Java_com_example_core_clock_RustSyncEngine_nativeNsToUs"
             "Java_com_example_core_clock_RustSyncEngine_nativeNsToMs"
+            "Java_com_example_core_audio_RustAudioProcessor_nativeCreate"
+            "Java_com_example_core_audio_RustAudioProcessor_nativeDestroy"
+            "Java_com_example_core_audio_RustAudioProcessor_nativeProcess"
           )
           for lib in "${LIBS[@]}"; do
             test -f "$lib"
