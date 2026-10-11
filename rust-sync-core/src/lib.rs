@@ -2,17 +2,18 @@
 //! Starting a second output is idempotent: it never resets the active session.
 
 pub mod audio_clock;
-pub mod av_sync;
 pub mod audio_dsp;
-pub mod pipeline;
-pub mod stream;
-pub mod thermal;
+pub mod av_sync;
 pub mod bounded_queue;
 pub mod discontinuity;
+pub mod jni_audio;
 pub mod media_packet;
 pub mod media_scheduler;
+pub mod pipeline;
 pub mod scheduler;
 pub mod shared_queue;
+pub mod stream;
+pub mod thermal;
 pub use audio_clock::{AudioClockError, AudioSampleClock};
 pub use av_sync::{AvSyncMonitor, AvSyncSnapshot, MonotonicPts};
 pub use bounded_queue::{BoundedQueue, OverflowPolicy, PushResult, QueueCapacityError};
