@@ -1,8 +1,8 @@
 # Android JNI integration
 
-This folder contains an example Kotlin bridge for the Rust session clock. It is
-not a complete Android Gradle module and is not yet wired into the original
-OpenLive app.
+This folder contains example Kotlin bridges for the Rust session clock and
+microphone PCM processor. It is not a complete Android Gradle module and is not
+yet wired into the original OpenLive app.
 
 ## Contract
 
@@ -14,6 +14,9 @@ OpenLive app.
 - `nativeStopSession()` clears the session clock. Call it only after both live
   streaming and local recording have stopped.
 - The clock is monotonic during a session and is not UTC/wall-clock time.
+- `RustAudioProcessor.process()` modifies interleaved stereo `ShortArray` PCM in
+  place and returns the block peak/RMS levels in dBFS. Its `close()` method must
+  run after the audio worker has stopped.
 
 ## Integration checklist
 
@@ -26,6 +29,8 @@ OpenLive app.
    versa), do not reset the clock.
 5. Check MediaCodec and muxer timestamp units before adapting the app timebase.
 6. Do not replace production timing until end-to-end A/V sync tests pass.
+7. Copy `RustAudioProcessor.kt` into the app source set and validate audio
+   settings and latency before enabling it in `AudioMixer`.
 
 ## Important
 
