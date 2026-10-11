@@ -109,3 +109,15 @@ the current diagnostics as a complete production streaming engine.
 5. Integrate Android audio/codec backends through a narrow JNI boundary.
 6. Add instrumentation and long-duration device tests for drift, pause/restart,
    concurrent stream/record outputs, and failure recovery.
+
+
+## OpenLive media port (in progress)
+
+The `port/openlive-audio-pipeline` branch starts moving Android-independent media policy from `Roadsearch/OpenLive` into `rust-sync-core`:
+
+- `audio_dsp.rs` ports stereo PCM microphone processing: high-pass filter, noise gate, gain, pan, mute, soft limiter, and dBFS meters.
+- `thermal.rs` ports thermal levels, battery/system status mapping, bitrate factors, and one-step cooldown behavior. Android still reads the sensors and schedules the cooldown.
+- `stream.rs` ports stream configuration helpers, RTMP URL assembly, thermal bitrate selection, and extra destination filtering.
+- `pipeline.rs` models streaming/recording lifecycle decisions and shared clock/encoder shutdown effects. Kotlin/Android still executes those effects.
+
+This is an incremental Rust core port. Camera2, AudioRecord, MediaCodec, EGL/OpenGL, MediaProjection, RootEncoder RTMP, MediaMuxer, Android permissions, and app UI remain in Kotlin. The new modules compile in the local standalone crate at `outputs/openlive-rust-port`; Android/JNI integration is still pending.
