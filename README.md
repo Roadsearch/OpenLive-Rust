@@ -120,4 +120,4 @@ The `port/openlive-audio-pipeline` branch starts moving Android-independent medi
 - `stream.rs` ports stream configuration helpers, RTMP URL assembly, thermal bitrate selection, and extra destination filtering.
 - `pipeline.rs` models streaming/recording lifecycle decisions and shared clock/encoder shutdown effects. Kotlin/Android still executes those effects.
 
-This is an incremental Rust core port. Camera2, AudioRecord, MediaCodec, EGL/OpenGL, MediaProjection, RootEncoder RTMP, MediaMuxer, Android permissions, and app UI remain in Kotlin. The new modules compile in the local standalone crate at `outputs/openlive-rust-port`; Android/JNI integration is still pending.
+This is an incremental Rust core port. Camera2, AudioRecord, MediaCodec, EGL/OpenGL, MediaProjection, RootEncoder RTMP, MediaMuxer, Android permissions, and app UI remain in Kotlin. The new media modules passed a local `cargo check`; Android/JNI integration is still pending.
