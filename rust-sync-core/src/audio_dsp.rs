@@ -123,8 +123,8 @@ impl MicProcessor {
         }
 
         let mic_gain = db_to_linear(config.mic.gain_db)
-            * config.mic.volume.clamp(0.0, 1.0)
-            * config.master_volume.clamp(0.0, 1.0);
+            * config.mic.volume.clamp(0.0, 2.0)
+            * config.master_volume.clamp(0.0, 2.0);
         let pan = config.mic.pan.clamp(-1.0, 1.0);
         let left_gain = if pan > 0.0 { 1.0 - pan } else { 1.0 };
         let right_gain = if pan < 0.0 { 1.0 + pan } else { 1.0 };
