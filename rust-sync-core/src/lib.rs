@@ -3,6 +3,10 @@
 
 pub mod audio_clock;
 pub mod av_sync;
+pub mod audio_dsp;
+pub mod pipeline;
+pub mod stream;
+pub mod thermal;
 pub mod bounded_queue;
 pub mod discontinuity;
 pub mod media_packet;
